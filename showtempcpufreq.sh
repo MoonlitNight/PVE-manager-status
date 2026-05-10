@@ -517,18 +517,29 @@ echo 去除订阅弹窗
 if ! grep -q 'modbyshowtempfreq' $plibjs ;then
 
 	[ ! -e $plibjs.$pvever.bak ] && cp $plibjs $plibjs.$pvever.bak
-	
-	if [ "$(sed -n '/\/nodes\/localhost\/subscription/{=;p;q}' $plibjs)" ];then 
-		sed -i '/\/nodes\/localhost\/subscription/,+10{
-			/res === null/{
-				N
-				s/(.*)/(false)/
-				a //modbyshowtempfreq
-			}
-		}' $plibjs
-		
-		$dmode && sed -n "/\/nodes\/localhost\/subscription/,+10p" $plibjs
-	else 
+
+	if [ "$(sed -n '/\/nodes\/localhost\/subscription/{=;p;q}' $plibjs)" ];then
+		# PVE 9: 新的多行条件结构
+		if grep -q 'res === null ||' $plibjs; then
+			sed -i '/\/nodes\/localhost\/subscription/,+30{
+				/res === null ||/{
+					N;N;N;N
+					s/res === null ||[^)]*res\.data\.status\.toLowerCase() !== .active./false \/*modbyshowtempfreq*\//
+				}
+			}' $plibjs
+		# PVE 8 及更早版本
+		elif grep -q 'res === null' $plibjs; then
+			sed -i '/\/nodes\/localhost\/subscription/,+10{
+				/res === null/{
+					N
+					s/(.*)/(false)/
+					a //modbyshowtempfreq
+				}
+			}' $plibjs
+		fi
+
+		$dmode && sed -n "/\/nodes\/localhost\/subscription/,+30p" $plibjs
+	else
 		echo 找不到修改点，放弃修改这个
 	fi
 else
